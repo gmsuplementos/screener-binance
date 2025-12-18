@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screener Multi-TF - Binance (Spot + Futuros)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 { color: #1e3c72; margin-bottom: 10px; text-align: center; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+        .info-box {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe9a1 100%);
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .info-box h3 { color: #856404; margin-bottom: 10px; }
+        .info-box ul { list-style: none; padding-left: 0; }
+        .info-box li { padding: 5px 0; color: #856404; }
+        .info-box li:before { content: "✓ "; color: #4caf50; font-weight: bold; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        button {
+            padding: 12px 24px;
+            border: 2px solid #1e3c72;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #1e3c72;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:hover:not(:disabled) { background: #2a5298; transform: translateY(-2px); }
+        button:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        .error { background: #ffebee; color: #c62828; }
+        .progress {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th {
+            background: #1e3c72;
+            color: white;
+            padding: 15px 8px;
+            text-align: left;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 13px;
+        }
+        td { padding: 10px 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
+        tr:hover { background: #f5f5f5; }
+        tr.new-signal { animation: highlight 2s; }
+        @keyframes highlight {
+            0%, 100% { background: #f5f5f5; }
+            50% { background: #fff9c4; }
+        }
+        .signal {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+        .compra { background: #4caf50; color: white; }
+        .venda { background: #f44336; color: white; }
+        .super-compra { background: #00e676; color: #000; }
+        .super-venda { background: #d32f2f; color: white; }
+        .neutro { background: #e0e0e0; color: #666; }
+        .priority { color: #ff6b00; font-weight: bold; }
+        .futures-badge { 
+            background: #2196f3; 
+            color: white; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            font-size: 9px;
+            margin-left: 5px;
+        }
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-controls label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-box { background: #f5f5f5; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-box .number { font-size: 24px; font-weight: bold; color: #1e3c72; }
+        .stat-box .label { font-size: 11px; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Screener Multi-TF - Binance (Spot + Futuros)</h1>
+        <p class="subtitle">Estocástico (8,3,3) + DIDI (3,8,20) + ADX (8) - Sinais Mantidos</p>
+        
+        <div class="info-box">
+            <h3>🎯 Sistema Inteligente:</h3>
+            <ul>
+                <li><strong>Todos os pares USDT:</strong> Spot (à vista) + Futuros (.P)</li>
+                <li><strong>Top 200 (maior volume):</strong> Atualização a cada 5min</li>
+                <li><strong>Outros pares:</strong> Atualização a cada 10min</li>
+                <li><strong>Sinais mantidos:</strong> Permanecem enquanto condições ativas</li>
+                <li><strong>Notificação sonora:</strong> Quando entra em novo sinal</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <button onclick="startScanning()" id="startBtn">▶️ Iniciar Scan Automático</button>
+            <button onclick="stopScanning()" id="stopBtn" disabled>⏸️ Pausar</button>
+        </div>
+
+        <div class="filter-controls">
+            <label>
+                <input type="checkbox" id="filterSignals" onchange="renderResults()">
+                Mostrar apenas COM sinais
+            </label>
+            <label>
+                <input type="checkbox" id="soundAlert" checked>
+                🔔 Alertas sonoros
+            </label>
+            <label>
+                <input type="checkbox" id="showSpot" checked onchange="renderResults()">
+                📊 Spot
+            </label>
+            <label>
+                <input type="checkbox" id="showFutures" checked onchange="renderResults()">
+                📈 Futuros
+            </label>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="number" id="totalCount">0</div>
+                <div class="label">Total de Pares</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="spotCount">0</div>
+                <div class="label">Spot (à vista)</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="futuresCount">0</div>
+                <div class="label">Futuros (.P)</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="priorityCount">0</div>
+                <div class="label">Top 200 Volume</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="scannedCount">0</div>
+                <div class="label">Escaneados</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="signalCount">0</div>
+                <div class="label">Com Sinais</div>
+            </div>
+        </div>
+        
+        <div class="progress" id="progressBar">
+            <div class="progress-bar" id="progressBarFill">0%</div>
+        </div>
+        
+        <div class="status" id="status">Pronto para começar! Clique em "Iniciar Scan"</div>
+        
+        <table id="resultsTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>Par</th>
+                    <th>Tipo</th>
+                    <th>Preço</th>
+                    <th>15min</th>
+                    <th>1d</th>
+                    <th>1h</th>
+                    <th>2h</th>
+                    <th>4h</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let allSymbols = [];
+        let prioritySymbols = [];
+        let regularSymbols = [];
+        let allResults = new Map();
+        let isScanning = false;
+        let priorityInterval = null;
+        let regularInterval = null;
+        let previousSignals = new Map();
+
+        const TIMEFRAMES = {'15min': '15m', '1d': '1d', '1h': '1h', '2h': '2h', '4h': '4h'};
+
+        const playAlert = () => {
+            if (!document.getElementById('soundAlert').checked) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 800;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.2);
+            } catch(e) { console.log('Audio error:', e); }
+        };
+
+        async function loadSymbols() {
+            try {
+                updateStatus('🔄 Carregando pares Spot da Binance...');
+                
+                // Buscar pares SPOT
+                const spotResponse = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+                const spotData = await spotResponse.json();
+                const spotPairs = spotData
+                    .filter(t => t.symbol.endsWith('USDT') && 
+                           !t.symbol.includes('DOWN') && 
+                           !t.symbol.includes('UP') && 
+                           !t.symbol.includes('BULL') && 
+                           !t.symbol.includes('BEAR'))
+                    .map(t => ({
+                        symbol: t.symbol,
+                        volume: parseFloat(t.quoteVolume),
+                        type: 'spot'
+                    }));
+
+                updateStatus('🔄 Carregando pares Futuros da Binance...');
+                
+                // Buscar pares FUTUROS
+                const futuresResponse = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+                const futuresData = await futuresResponse.json();
+                const futuresPairs = futuresData
+                    .filter(t => t.symbol.endsWith('USDT'))
+                    .map(t => ({
+                        symbol: t.symbol,
+                        volume: parseFloat(t.quoteVolume),
+                        type: 'futures'
+                    }));
+
+                // Combinar e ordenar por volume
+                const allPairs = [...spotPairs, ...futuresPairs]
+                    .sort((a, b) => b.volume - a.volume);
+
+                allSymbols = allPairs;
+                prioritySymbols = allPairs.slice(0, 200);
+                regularSymbols = allPairs.slice(200);
+
+                const spotTotal = allPairs.filter(p => p.type === 'spot').length;
+                const futuresTotal = allPairs.filter(p => p.type === 'futures').length;
+
+                document.getElementById('totalCount').textContent = allSymbols.length;
+                document.getElementById('spotCount').textContent = spotTotal;
+                document.getElementById('futuresCount').textContent = futuresTotal;
+                document.getElementById('priorityCount').textContent = prioritySymbols.length;
+
+                updateStatus(`✅ ${allSymbols.length} pares carregados (${spotTotal} Spot + ${futuresTotal} Futuros)`, false, 'success');
+                return true;
+            } catch (e) {
+                updateStatus('❌ Erro ao carregar pares. Tente novamente.', true);
+                console.error('Load error:', e);
+                return false;
+            }
+        }
+
+        function updateStatus(msg, error = false, type = '') {
+            const status = document.getElementById('status');
+            status.textContent = msg;
+            status.className = error ? 'status error' : type === 'success' ? 'status success' : 'status';
+        }
+
+        function updateProgress(current, total, type) {
+            const progress = document.getElementById('progressBar');
+            const fill = document.getElementById('progressBarFill');
+            progress.style.display = 'block';
+            const percent = Math.round((current / total) * 100);
+            fill.style.width = percent + '%';
+            fill.textContent = `${type}: ${current}/${total} (${percent}%)`;
+        }
+
+        async function fetchKlines(symbol, interval, limit = 100, isFutures = false) {
+            try {
+                const baseUrl = isFutures ? 
+                    'https://fapi.binance.com/fapi/v1/klines' : 
+                    'https://api.binance.com/api/v3/klines';
+                const response = await fetch(`${baseUrl}?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+                if (!response.ok) return null;
+                return await response.json();
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function calcSMA(data, period) {
+            const result = [];
+            for (let i = period - 1; i < data.length; i++) {
+                const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+                result.push(sum / period);
+            }
+            return result;
+        }
+
+        function calcStochastic(candles, period = 8, smooth = 3) {
+            const k = [];
+            for (let i = period - 1; i < candles.length; i++) {
+                const slice = candles.slice(i - period + 1, i + 1);
+                const highest = Math.max(...slice.map(c => parseFloat(c[2])));
+                const lowest = Math.min(...slice.map(c => parseFloat(c[3])));
+                const close = parseFloat(candles[i][4]);
+                k.push(((close - lowest) / (highest - lowest)) * 100);
+            }
+            const kSmooth = calcSMA(k, smooth);
+            const d = calcSMA(kSmooth, smooth);
+            return { k: kSmooth, d };
+        }
+
+        function calcADX(candles, period = 8) {
+            const tr = [];
+            for (let i = 1; i < candles.length; i++) {
+                const high = parseFloat(candles[i][2]);
+                const low = parseFloat(candles[i][3]);
+                const prevClose = parseFloat(candles[i-1][4]);
+                tr.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)));
+            }
+            return calcSMA(tr, period);
+        }
+
+        function analyzeSignals(candles) {
+            if (!candles || candles.length < 50) return '';
+            const closes = candles.map(c => parseFloat(c[4]));
+            const stoch = calcStochastic(candles);
+            const ma3 = calcSMA(closes, 3);
+            const ma8 = calcSMA(closes, 8);
+            const adx = calcADX(candles);
+            
+            const idx = Math.min(stoch.k.length - 1, ma3.length - 1, adx.length - 1);
+            if (idx < 1) return '';
+            
+            const k = stoch.k[idx];
+            const d = stoch.d[idx];
+            const m3 = ma3[idx];
+            const m8 = ma8[idx];
+            const adx_curr = adx[idx];
+            const adx_prev = adx[idx - 1] || 0;
+            
+            const k_above_d = k > d;
+            const k_below_d = k < d;
+            const m3_above_m8 = m3 > m8;
+            const m3_below_m8 = m3 < m8;
+            const adx_rising = adx_curr > adx_prev;
+            
+            if (k_above_d && m3_above_m8 && adx_rising) return 'SUPER COMPRA';
+            if (k_below_d && m3_below_m8 && adx_rising) return 'SUPER VENDA';
+            if (k_above_d && m3_above_m8) return 'COMPRA';
+            if (k_below_d && m3_below_m8) return 'VENDA';
+            return '';
+        }
+
+        function getSignalClass(signal) {
+            if (!signal) return 'neutro';
+            if (signal === 'SUPER COMPRA') return 'super-compra';
+            if (signal === 'SUPER VENDA') return 'super-venda';
+            if (signal === 'COMPRA') return 'compra';
+            if (signal === 'VENDA') return 'venda';
+            return 'neutro';
+        }
+
+        function renderResults() {
+            const tbody = document.getElementById('resultsBody');
+            const filterEnabled = document.getElementById('filterSignals').checked;
+            const showSpot = document.getElementById('showSpot').checked;
+            const showFutures = document.getElementById('showFutures').checked;
+            
+            let resultsToShow = Array.from(allResults.values());
+            
+            // Filtrar por tipo
+            resultsToShow = resultsToShow.filter(r => {
+                if (r.type === 'spot' && !showSpot) return false;
+                if (r.type === 'futures' && !showFutures) return false;
+                return true;
+            });
+            
+            // Filtrar por sinais
+            if (filterEnabled) {
+                resultsToShow = resultsToShow.filter(r => 
+                    Object.values(r.signals).some(s => s !== '')
+                );
+            }
+            
+            document.getElementById('scannedCount').textContent = allResults.size;
+            document.getElementById('signalCount').textContent = resultsToShow.filter(r => 
+                Object.values(r.signals).some(s => s !== '')
+            ).length;
+            
+            tbody.innerHTML = resultsToShow.map(r => `
+                <tr class="${r.isNew ? 'new-signal' : ''}">
+                    <td>
+                        <strong>${r.symbol}</strong>
+                        ${r.type === 'futures' ? '<span class="futures-badge">FUTUROS</span>' : ''}
+                    </td>
+                    <td class="${r.isPriority ? 'priority' : ''}">
+                        ${r.isPriority ? '🔥 TOP' : 'Regular'}
+                    </td>
+                    <td>$${r.price}</td>
+                    <td><span class="signal ${getSignalClass(r.signals['15min'])}">${r.signals['15min'] || '-'}</span></td>
+                    <td><span class="signal ${getSignalClass(r.signals['1d'])}">${r.signals['1d'] || '-'}</span></td>
+                    <td><span class="signal ${getSignalClass(r.signals['1h'])}">${r.signals['1h'] || '-'}</span></td>
+                    <td><span class="signal ${getSignalClass(r.signals['2h'])}">${r.signals['2h'] || '-'}</span></td>
+                    <td><span class="signal ${getSignalClass(r.signals['4h'])}">${r.signals['4h'] || '-'}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        async function scanBatch(symbols, isPriority = false) {
+            const batchSize = 30;
+            for (let i = 0; i < symbols.length; i += batchSize) {
+                if (!isScanning) break;
+                const batch = symbols.slice(i, Math.min(i + batchSize, symbols.length));
+                updateProgress(i + batch.length, symbols.length, isPriority ? 'Top 200' : 'Outros');
+                
+                for (const item of batch) {
+                    if (!isScanning) break;
+                    const symbol = item.symbol;
+                    const isFutures = item.type === 'futures';
+                    
+                    try {
+                        const price_data = await fetchKlines(symbol, '1m', 1, isFutures);
+                        if (!price_data) continue;
+                        const price = parseFloat(price_data[0][4]).toFixed(isFutures ? 4 : 8);
+                        const signals = {};
+                        
+                        for (const [label, interval] of Object.entries(TIMEFRAMES)) {
+                            const candles = await fetchKlines(symbol, interval, 100, isFutures);
+                            signals[label] = candles ? analyzeSignals(candles) : '';
+                            await new Promise(r => setTimeout(r, 50));
+                        }
+                        
+                        const oldSignals = previousSignals.get(symbol) || {};
+                        const hasNewSignal = Object.entries(signals).some(([tf, sig]) => 
+                            sig && sig !== oldSignals[tf]
+                        );
+                        
+                        if (hasNewSignal) {
+                            playAlert();
+                            allResults.set(symbol, { 
+                                symbol, 
+                                price, 
+                                signals, 
+                                isPriority, 
+                                type: item.type,
+                                isNew: true 
+                            });
+                            setTimeout(() => {
+                                const r = allResults.get(symbol);
+                                if (r) r.isNew = false;
+                                renderResults();
+                            }, 3000);
+                        } else {
+                            allResults.set(symbol, { 
+                                symbol, 
+                                price, 
+                                signals, 
+                                isPriority, 
+                                type: item.type,
+                                isNew: false 
+                            });
+                        }
+                        
+                        previousSignals.set(symbol, signals);
+                        renderResults();
+                    } catch (e) {
+                        console.error(`Erro ${symbol}:`, e);
+                    }
+                }
+            }
+            document.getElementById('progressBar').style.display = 'none';
+        }
+
+        async function startScanning() {
+            if (allSymbols.length === 0) {
+                const loaded = await loadSymbols();
+                if (!loaded) return;
+            }
+            
+            isScanning = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('resultsTable').style.display = 'table';
+            
+            updateStatus('🔍 Escaneando Top 200 (Spot + Futuros)...');
+            await scanBatch(prioritySymbols, true);
+            
+            updateStatus('🔍 Escaneando outros pares...');
+            await scanBatch(regularSymbols, false);
+            
+            updateStatus('✅ Scan inicial completo! Auto-refresh ativado.', false, 'success');
+            
+            priorityInterval = setInterval(async () => {
+                if (!isScanning) return;
+                updateStatus('🔄 Atualizando Top 200...');
+                await scanBatch(prioritySymbols, true);
+                updateStatus('✅ Top 200 atualizado!', false, 'success');
+            }, 5 * 60 * 1000);
+            
+            regularInterval = setInterval(async () => {
+                if (!isScanning) return;
+                updateStatus('🔄 Atualizando outros pares...');
+                await scanBatch(regularSymbols, false);
+                updateStatus('✅ Outros pares atualizados!', false, 'success');
+            }, 10 * 60 * 1000);
+        }
+
+        function stopScanning() {
+            isScanning = false;
+            if (priorityInterval) clearInterval(priorityInterval);
+            if (regularInterval) clearInterval(regularInterval);
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('progressBar').style.display = 'none';
+            updateStatus('⏸️ Scan pausado');
+        }
+    </script>
+</body>
+</html>
